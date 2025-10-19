@@ -29,12 +29,25 @@ class OpenSearchConfig:
 
 
 @dataclass
+class BedrockConfig:
+    """Settings for communicating with AWS Bedrock."""
+
+    region: Optional[str] = None
+    endpoint_url: Optional[str] = None
+    max_tokens: int = 1024
+    temperature: float = 0.0
+    guardrail_id: Optional[str] = None
+    guardrail_version: Optional[str] = None
+
+
+@dataclass
 class AgentConfig:
     """Top level configuration for the networking agent."""
 
     model: str
     athena: AthenaConfig
     opensearch: OpenSearchConfig
+    bedrock: BedrockConfig = field(default_factory=BedrockConfig)
     aws_profile: Optional[str] = None
     system_prompt: str = (
         "You are a senior networking domain expert who leverages structured "
