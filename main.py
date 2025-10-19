@@ -8,7 +8,12 @@ import logging
 import sys
 
 from networking_agent import create_networking_agent
-from networking_agent.config import AgentConfig, AthenaConfig, OpenSearchConfig
+from networking_agent.config import (
+    AgentConfig,
+    AthenaConfig,
+    BedrockConfig,
+    OpenSearchConfig,
+)
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
@@ -26,6 +31,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--opensearch-password")
     parser.add_argument("--opensearch-region")
     parser.add_argument("--opensearch-index")
+    parser.add_argument("--bedrock-region")
+    parser.add_argument("--bedrock-endpoint-url")
+    parser.add_argument("--bedrock-max-tokens", type=int)
+    parser.add_argument("--bedrock-temperature", type=float)
+    parser.add_argument("--bedrock-guardrail-id")
+    parser.add_argument("--bedrock-guardrail-version")
     parser.add_argument("--aws-profile")
     parser.add_argument("--system-prompt")
     parser.add_argument("--max-turns", type=int, default=16)
@@ -48,10 +59,32 @@ def build_config(args: argparse.Namespace) -> AgentConfig:
         default_index=args.opensearch_index,
     )
     system_prompt = args.system_prompt or AgentConfig.__dataclass_fields__["system_prompt"].default
+    bedrock_defaults = BedrockConfig()
+    bedrock = BedrockConfig(
+        region=args.bedrock_region or bedrock_defaults.region,
+        endpoint_url=args.bedrock_endpoint_url or bedrock_defaults.endpoint_url,
+        max_tokens=(
+            args.bedrock_max_tokens
+            if args.bedrock_max_tokens is not None
+            else bedrock_defaults.max_tokens
+        ),
+        temperature=(
+            args.bedrock_temperature
+            if args.bedrock_temperature is not None
+            else bedrock_defaults.temperature
+        ),
+        guardrail_id=args.bedrock_guardrail_id or bedrock_defaults.guardrail_id,
+        guardrail_version=(
+            args.bedrock_guardrail_version
+            if args.bedrock_guardrail_version is not None
+            else bedrock_defaults.guardrail_version
+        ),
+    )
     return AgentConfig(
         model=args.model,
         athena=athena,
         opensearch=opensearch,
+        bedrock=bedrock,
         aws_profile=args.aws_profile,
         system_prompt=system_prompt,
         max_turns=args.max_turns,

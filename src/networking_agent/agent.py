@@ -9,13 +9,13 @@ from typing import Any
 
 from boto3 import Session
 from claude_agent_sdk.agent import Agent
-from claude_agent_sdk.clients import ClaudeClient
 from claude_agent_sdk.memory import ShortTermMemory
 from claude_agent_sdk.orchestration import AgentOrchestrator
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from opensearchpy.helpers.aws4auth import AWSV4SignerAuth
 
 from .config import AgentConfig
+from .bedrock import BedrockClaudeClient
 from .tools.opensearch import OpenSearchQueryTool
 from .tools.sql import AthenaSQLTool
 
@@ -36,11 +36,24 @@ class NetworkingAgent:
             return Session(profile_name=profile)
         return Session()
 
-    def _build_llm(self) -> ClaudeClient:
-        LOGGER.debug("Creating Claude client for model %s", self.config.model)
-        return ClaudeClient(model=self.config.model)
+    def _build_llm(self, boto_session: Session) -> BedrockClaudeClient:
+        LOGGER.debug(
+            "Creating Bedrock Claude client for model %s in region %s",
+            self.config.model,
+            self.config.bedrock.region,
+        )
+        return BedrockClaudeClient(
+            model=self.config.model,
+            session=boto_session,
+            region_name=self.config.bedrock.region,
+            endpoint_url=self.config.bedrock.endpoint_url,
+            max_tokens=self.config.bedrock.max_tokens,
+            temperature=self.config.bedrock.temperature,
+            guardrail_id=self.config.bedrock.guardrail_id,
+            guardrail_version=self.config.bedrock.guardrail_version,
+        )
 
-    def _build_tools(self, llm: ClaudeClient, boto_session: Session) -> list[Any]:
+    def _build_tools(self, llm: BedrockClaudeClient, boto_session: Session) -> list[Any]:
         LOGGER.debug("Creating tool instances")
         sql_tool = AthenaSQLTool(
             llm=llm,
@@ -75,7 +88,7 @@ class NetworkingAgent:
 
     def create(self) -> AgentOrchestrator:
         boto_session = self._build_boto_session()
-        llm = self._build_llm()
+        llm = self._build_llm(boto_session)
         tools = self._build_tools(llm, boto_session)
         memory = ShortTermMemory(window=self.config.memory_window)
         agent = Agent(
