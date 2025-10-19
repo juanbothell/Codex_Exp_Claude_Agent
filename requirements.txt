@@ -1,0 +1,5 @@
+claude-agent-sdk
+awswrangler
+opensearch-py
+boto3
+pandas
